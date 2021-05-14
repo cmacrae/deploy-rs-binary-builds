@@ -1,0 +1,49 @@
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/**
+
+  # Build on PR
+  pull_request:
+
+  # Allow trigger for external PRs
+  workflow_dispatch:
+
+  # Also run regularly because pushes initiated by GitHub Actions don't
+  # trigger the above events.
+  schedule:
+    # every day at 00:00 UTC
+    - cron: '00 00 * * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+    - uses: actions/checkout@v2.3.4
+      with:
+        # Nix Flakes doesn't work on shallow clones
+        fetch-depth: 0
+
+    - uses: cachix/install-nix-action@v13
+      with:
+        install_url: https://github.com/numtide/nix-flakes-installer/releases/download/nix-2.4pre20210429_d15a196/install
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+
+    - uses: cachix/cachix-action@v10
+      with:
+        name: deploy-rs-aarch64
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
+    - run: |
+        DEBIAN_FRONTEND=noninteractive
+        sudo apt-get update -q -y && sudo apt-get install -q -y qemu-system-aarch64 qemu-efi binfmt-support qemu-user-static
+        mkdir -p ~/.config/nix
+        sudo bash -c "echo system-features = aarch64-linux arm-linux >> /etc/nix/nix.conf"
+
+    - run: |
+        nix build -j4 --option system aarch64-linux --option sandbox false --extra-platforms aarch64-linux github:serokell/deploy-rs#defaultPackage.aarch64-linux
+        nix show-derivation ./result
