@@ -5,26 +5,20 @@ on:
     paths:
       - .github/**
 
-  # Build on PR
-  pull_request:
-
-  # Allow trigger for external PRs
-  workflow_dispatch:
-
-  # Also run regularly because pushes initiated by GitHub Actions don't
-  # trigger the above events.
   schedule:
     # every day at 00:00 UTC
     - cron: '00 00 * * *'
 
 jobs:
-  build:
+  linux:
+    strategy:
+      matrix:
+        arch: [ x86_64, aarch64 ]
     runs-on: ubuntu-latest
     steps:
 
     - uses: actions/checkout@v2.3.4
       with:
-        # Nix Flakes doesn't work on shallow clones
         fetch-depth: 0
 
     - uses: cachix/install-nix-action@v13
@@ -35,15 +29,59 @@ jobs:
 
     - uses: cachix/cachix-action@v10
       with:
-        name: deploy-rs-aarch64
+        name: deploy-rs
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
     - run: |
+        nix show-derivation github:serokell/deploy-rs#defaultPackage.${{ matrix.arch }}-linux > ${{ matrix.arch }}-linux.drv
+ 
+    - uses: actions/cache@v2
+      id: linux-drv
+      with:
+        path: ./${{ matrix.arch }}-linux.drv
+        key: ${{ matrix.arch }}-linux-drv-${{ hashFiles('${{ matrix.arch }}-linux.drv') }}
+
+    - if: steps.linux-drv.outputs.cache-hit != 'true'
+      run: |
         DEBIAN_FRONTEND=noninteractive
         sudo apt-get update -q -y && sudo apt-get install -q -y qemu-system-aarch64 qemu-efi binfmt-support qemu-user-static
         mkdir -p ~/.config/nix
         sudo bash -c "echo system-features = aarch64-linux arm-linux >> /etc/nix/nix.conf"
 
+    - name: Build Linux
+      if: steps.linux-drv.outputs.cache-hit != 'true'
+      run: |
+        nix build -j4 --option system ${{ matrix.arch }}-linux --option sandbox false --extra-platforms ${{ matrix.arch }}-linux github:serokell/deploy-rs#defaultPackage.${{ matrix.arch }}-linux
+
+  darwin:
+    runs-on: macos-latest
+    steps:
+
+    - uses: actions/checkout@v2.3.4
+      with:
+        fetch-depth: 0
+
+    - uses: cachix/install-nix-action@v13
+      with:
+        install_url: https://github.com/numtide/nix-flakes-installer/releases/download/nix-2.4pre20210429_d15a196/install
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+
+    - uses: cachix/cachix-action@v10
+      with:
+        name: deploy-rs
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+
     - run: |
-        nix build -j4 --option system aarch64-linux --option sandbox false --extra-platforms aarch64-linux github:serokell/deploy-rs#defaultPackage.aarch64-linux
-        nix show-derivation ./result
+        nix show-derivation github:serokell/deploy-rs#defaultPackage.x86_64-darwin > x86_64-darwin.drv
+ 
+    - uses: actions/cache@v2
+      id: darwin-drv
+      with:
+        path: ./x86_64-darwin.drv
+        key: x86_64-darwin-drv-${{ hashFiles('x86_64-darwin.drv') }}
+
+    - name: Build Darwin
+      if: steps.darwin-drv.outputs.cache-hit != 'true'
+      run: |
+        nix build github:serokell/deploy-rs#defaultPackage.x86_64-darwin
