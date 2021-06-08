@@ -39,7 +39,7 @@ jobs:
       id: linux-drv
       with:
         path: ./${{ matrix.arch }}-linux.drv
-        key: ${{ matrix.arch }}-linux-drv-${{ hashFiles('${{ matrix.arch }}-linux.drv') }}
+        key: ${{ matrix.arch }}-linux-drv-${{ hashFiles(format('{0}-linux.drv', matrix.arch)) }}
 
     - if: steps.linux-drv.outputs.cache-hit != 'true'
       run: |
