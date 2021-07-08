@@ -32,33 +32,40 @@ jobs:
         name: deploy-rs
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
-    - uses: nick-invision/retry@v2
+    - name: Get the latest derivation
+      uses: nick-invision/retry@v2
       with:
         timeout_minutes: 1
         max_attempts: 3
         command: |
           nix show-derivation github:serokell/deploy-rs#defaultPackage.${{ matrix.arch }}-linux > ${{ matrix.arch }}-linux.drv
 
-    - uses: nick-invision/retry@v2
+    - name: Get the latest commit
+      uses: nick-invision/retry@v2
       with:
         timeout_minutes: 1
         max_attempts: 3
-        command: |
-          curl -s https://api.github.com/repos/serokell/deploy-rs/commits/master | jq -r '.sha' > deploy-rs-latest-commit
+        command: >-
+          curl -s
+          --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}'
+          https://api.github.com/repos/serokell/deploy-rs/commits/master | jq -r '.sha' > deploy-rs-latest-commit
  
-    - uses: actions/cache@v2
+    - name: Cache the latest derivation
+      uses: actions/cache@v2
       id: linux-drv
       with:
         path: ./${{ matrix.arch }}-linux.drv
         key: ${{ matrix.arch }}-linux-drv-${{ hashFiles(format('{0}-linux.drv', matrix.arch)) }}
 
-    - uses: actions/cache@v2
+    - name: Cache the latest commit
+      uses: actions/cache@v2
       id: latest-commit
       with:
         path: ./deploy-rs-latest-commit
         key: latest-commit-${{ hashFiles('latest-commit') }}
 
-    - if: steps.linux-drv.outputs.cache-hit != 'true' || steps.latest-commit.outputs.cache-hit != 'true' 
+    - name: Set up builders
+      if: steps.linux-drv.outputs.cache-hit != 'true' || steps.latest-commit.outputs.cache-hit != 'true' 
       run: |
         DEBIAN_FRONTEND=noninteractive
         sudo apt-get update -q -y && sudo apt-get install -q -y qemu-system-aarch64 qemu-efi binfmt-support qemu-user-static
@@ -89,27 +96,33 @@ jobs:
         name: deploy-rs
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
-    - uses: nick-invision/retry@v2
+    - name: Get the latest derivation
+      uses: nick-invision/retry@v2
       with:
         timeout_minutes: 1
         max_attempts: 3
         command: |
           nix show-derivation github:serokell/deploy-rs#defaultPackage.x86_64-darwin > x86_64-darwin.drv
  
-    - uses: nick-invision/retry@v2
+    - name: Get the latest commit
+      uses: nick-invision/retry@v2
       with:
         timeout_minutes: 1
         max_attempts: 3
-        command: |
-          curl -s https://api.github.com/repos/serokell/deploy-rs/commits/master | jq -r '.sha' > deploy-rs-latest-commit
+        command: >-
+          curl -s
+          --header 'authorization: Bearer ${{ secrets.GITHUB_TOKEN }}'
+          https://api.github.com/repos/serokell/deploy-rs/commits/master | jq -r '.sha' > deploy-rs-latest-commit
  
-    - uses: actions/cache@v2
+    - name: Cache the latest derivation
+      uses: actions/cache@v2
       id: darwin-drv
       with:
         path: ./x86_64-darwin.drv
         key: x86_64-darwin-drv-${{ hashFiles('x86_64-darwin.drv') }}
 
-    - uses: actions/cache@v2
+    - name: Cache the latest commit
+      uses: actions/cache@v2
       id: latest-commit
       with:
         path: ./deploy-rs-latest-commit
