@@ -32,11 +32,19 @@ jobs:
         name: deploy-rs
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
-    - run: |
-        nix show-derivation github:serokell/deploy-rs#defaultPackage.${{ matrix.arch }}-linux > ${{ matrix.arch }}-linux.drv
+    - uses: nick-invision/retry@v2
+      with:
+        timeout_minutes: 1
+        max_attempts: 3
+        command: |
+          nix show-derivation github:serokell/deploy-rs#defaultPackage.${{ matrix.arch }}-linux > ${{ matrix.arch }}-linux.drv
 
-    - run: |
-        curl -s https://api.github.com/repos/serokell/deploy-rs/commits/master | jq -r '.sha' > deploy-rs-latest-commit
+    - uses: nick-invision/retry@v2
+      with:
+        timeout_minutes: 1
+        max_attempts: 3
+        command: |
+          curl -s https://api.github.com/repos/serokell/deploy-rs/commits/master | jq -r '.sha' > deploy-rs-latest-commit
  
     - uses: actions/cache@v2
       id: linux-drv
@@ -81,11 +89,19 @@ jobs:
         name: deploy-rs
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
-    - run: |
-        nix show-derivation github:serokell/deploy-rs#defaultPackage.x86_64-darwin > x86_64-darwin.drv
+    - uses: nick-invision/retry@v2
+      with:
+        timeout_minutes: 1
+        max_attempts: 3
+        command: |
+          nix show-derivation github:serokell/deploy-rs#defaultPackage.x86_64-darwin > x86_64-darwin.drv
  
-    - run: |
-        curl -s https://api.github.com/repos/serokell/deploy-rs/commits/master | jq -r '.sha' > deploy-rs-latest-commit
+    - uses: nick-invision/retry@v2
+      with:
+        timeout_minutes: 1
+        max_attempts: 3
+        command: |
+          curl -s https://api.github.com/repos/serokell/deploy-rs/commits/master | jq -r '.sha' > deploy-rs-latest-commit
  
     - uses: actions/cache@v2
       id: darwin-drv
