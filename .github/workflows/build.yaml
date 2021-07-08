@@ -35,7 +35,7 @@ jobs:
     - name: Get the latest derivation
       uses: nick-invision/retry@v2
       with:
-        timeout_seconds: 10
+        timeout_seconds: 30
         max_attempts: 3
         retry_wait_seconds: 60
         command: |
@@ -44,7 +44,7 @@ jobs:
     - name: Get the latest commit
       uses: nick-invision/retry@v2
       with:
-        timeout_seconds: 10
+        timeout_seconds: 30
         max_attempts: 3
         command: >-
           curl -s
@@ -100,7 +100,7 @@ jobs:
     - name: Get the latest derivation
       uses: nick-invision/retry@v2
       with:
-        timeout_seconds: 10
+        timeout_seconds: 30
         retry_wait_seconds: 60
         max_attempts: 3
         command: |
@@ -109,7 +109,7 @@ jobs:
     - name: Get the latest commit
       uses: nick-invision/retry@v2
       with:
-        timeout_seconds: 10
+        timeout_seconds: 30
         max_attempts: 3
         command: >-
           curl -s
