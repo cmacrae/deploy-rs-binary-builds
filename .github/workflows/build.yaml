@@ -34,6 +34,9 @@ jobs:
 
     - run: |
         nix show-derivation github:serokell/deploy-rs#defaultPackage.${{ matrix.arch }}-linux > ${{ matrix.arch }}-linux.drv
+
+    - run: |
+        curl -s https://api.github.com/repos/serokell/deploy-rs/commits/master | jq -r '.sha' > deploy-rs-latest-commit
  
     - uses: actions/cache@v2
       id: linux-drv
@@ -41,7 +44,13 @@ jobs:
         path: ./${{ matrix.arch }}-linux.drv
         key: ${{ matrix.arch }}-linux-drv-${{ hashFiles(format('{0}-linux.drv', matrix.arch)) }}
 
-    - if: steps.linux-drv.outputs.cache-hit != 'true'
+    - uses: actions/cache@v2
+      id: latest-commit
+      with:
+        path: ./deploy-rs-latest-commit
+        key: latest-commit-${{ hashFiles('latest-commit') }}
+
+    - if: steps.linux-drv.outputs.cache-hit != 'true' || steps.latest-commit.outputs.cache-hit != 'true' 
       run: |
         DEBIAN_FRONTEND=noninteractive
         sudo apt-get update -q -y && sudo apt-get install -q -y qemu-system-aarch64 qemu-efi binfmt-support qemu-user-static
@@ -49,9 +58,9 @@ jobs:
         sudo bash -c "echo system-features = aarch64-linux arm-linux >> /etc/nix/nix.conf"
 
     - name: Build Linux
-      if: steps.linux-drv.outputs.cache-hit != 'true'
+      if: steps.linux-drv.outputs.cache-hit != 'true' || steps.latest-commit.outputs.cache-hit != 'true' 
       run: |
-        nix build -j4 --option system ${{ matrix.arch }}-linux --option sandbox false --extra-platforms ${{ matrix.arch }}-linux github:serokell/deploy-rs#defaultPackage.${{ matrix.arch }}-linux
+        nix build -L -j4 --option system ${{ matrix.arch }}-linux --option sandbox false --extra-platforms ${{ matrix.arch }}-linux github:serokell/deploy-rs#defaultPackage.${{ matrix.arch }}-linux
 
   darwin:
     runs-on: macos-latest
@@ -75,13 +84,22 @@ jobs:
     - run: |
         nix show-derivation github:serokell/deploy-rs#defaultPackage.x86_64-darwin > x86_64-darwin.drv
  
+    - run: |
+        curl -s https://api.github.com/repos/serokell/deploy-rs/commits/master | jq -r '.sha' > deploy-rs-latest-commit
+ 
     - uses: actions/cache@v2
       id: darwin-drv
       with:
         path: ./x86_64-darwin.drv
         key: x86_64-darwin-drv-${{ hashFiles('x86_64-darwin.drv') }}
 
+    - uses: actions/cache@v2
+      id: latest-commit
+      with:
+        path: ./deploy-rs-latest-commit
+        key: latest-commit-${{ hashFiles('latest-commit') }}
+
     - name: Build Darwin
-      if: steps.darwin-drv.outputs.cache-hit != 'true'
+      if: steps.darwin-drv.outputs.cache-hit != 'true' || steps.latest-commit.outputs.cache-hit != 'true' 
       run: |
-        nix build github:serokell/deploy-rs#defaultPackage.x86_64-darwin
+        nix build -L github:serokell/deploy-rs#defaultPackage.x86_64-darwin
