@@ -6,7 +6,6 @@ on:
       - .github/**
 
   schedule:
-    # every day at 00:00 UTC
     - cron: '00 00 * * *'
 
 jobs:
