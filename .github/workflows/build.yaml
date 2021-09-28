@@ -2,10 +2,6 @@ on:
   push:
     branches:
       - master
-    paths:
-      - '!README.md'
-      - '!LICENSE'
-
   schedule:
     - cron: '00 00 * * *'
 
